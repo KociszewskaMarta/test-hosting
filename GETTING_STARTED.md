@@ -104,8 +104,6 @@ Powinno pokazać:
 ```
 NAME                STATUS
 nextjs-app          Up
-postgres            Up
-supabase-studio     Up
 ```
 
 Jeśli któryś ma status `Exited` - zobacz TROUBLESHOOTING.md
