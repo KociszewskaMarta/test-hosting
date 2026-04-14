@@ -1,0 +1,74 @@
+version: '3.8'
+
+# Development configuration with hot reloading
+# Usage: docker-compose -f docker-compose-dev.yml up -d
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: supabase-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network-dev
+
+  # Supabase Studio
+  supabase-studio:
+    image: supabase/studio:latest
+    container_name: supabase-studio-dev
+    environment:
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: http://localhost:8000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvbmciLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwMzk0OTgyNCwiZXhwIjoxNjM1NDg1ODI0fQ.sMZo8yS4OrcMYs23kfYtNotDMeuvHA3LEjxI-PonLlI}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvbmciLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjAzOTQ5ODI0LCJleHAiOjE2MzU0ODU4MjR9.Z7zPmL_K1dL4yH1y5F8yH5yH1y5F8yH5yH1y5F8yH5A}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${STUDIO_PORT:-3001}:3000"
+    networks:
+      - app-network-dev
+
+  # Next.js Application (Development Mode)
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: nextjs-app-dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_SUPABASE_URL: http://kong:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvbmciLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwMzk0OTgyNCwiZXhwIjoxNjM1NDg1ODI0fQ.sMZo8yS4OrcMYs23kfYtNotDMeuvHA3LEjxI-PonLlI}
+    volumes:
+      # Hot reload - montuj wszystkie źródła
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${NEXTJS_PORT:-3000}:3000"
+    networks:
+      - app-network-dev
+    restart: unless-stopped
+
+volumes:
+  postgres-data-dev:
+
+networks:
+  app-network-dev:
+    driver: bridge
